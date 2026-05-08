@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from app.schemas.ingest_schema import IngestBatch, IngestResponse
 from app.schemas.auth_schema import UserResponse
 from app.core.security import get_current_user
 from app.db.session import get_db
 from app.models.signal_vector import SignalVector
-from app.services.h3_engine import bin_to_hex
+from app.models.hex_risk import HexRiskScore
+from app.services.h3_engine import bin_to_hex, compute_risk_score, classify_tier
+from datetime import datetime
 import uuid
 
 router = APIRouter()
@@ -40,22 +43,64 @@ async def ingest_signals(
                 lon=vector.lon,
                 hour_of_day=vector.hour_of_day,
                 day_of_week=vector.day_of_week,
-                batch_id=batch.batch_id
+                batch_id=str(batch.batch_id)
             )
         )
         
     if vectors_to_insert:
         db.add_all(vectors_to_insert)
         await db.commit()
+    
+    # Process risk scores inline (no Celery needed)
+    for hex_id in hex_ids:
+        result = await db.execute(
+            select(SignalVector).where(SignalVector.hex_id == hex_id)
+        )
+        signals = result.scalars().all()
+        signal_dicts = [
+            {"severity": float(s.severity), "sector": s.sector, "received_at": s.received_at or datetime.utcnow()}
+            for s in signals
+        ]
         
-    # Queue Celery task for computing risk
-    from app.core.celery_app import celery_app
-    task = celery_app.send_task("recompute_hex_risk", args=[list(hex_ids)])
+        risk_score = compute_risk_score(signal_dicts)
+        risk_tier = classify_tier(risk_score)
+        
+        # Upsert hex risk score
+        existing = await db.execute(
+            select(HexRiskScore).where(HexRiskScore.hex_id == hex_id)
+        )
+        hex_risk = existing.scalars().first()
+        
+        if hex_risk:
+            hex_risk.risk_score = risk_score
+            hex_risk.risk_tier = risk_tier
+            hex_risk.signal_count = len(signals)
+            hex_risk.top_sector = sector
+            hex_risk.top_signal_type = signals[0].signal_type if signals else None
+            hex_risk.computed_at = datetime.utcnow()
+            hex_risk.last_signal_at = datetime.utcnow()
+        else:
+            import h3 as h3lib
+            lat, lon = h3lib.cell_to_latlng(hex_id)
+            new_hex = HexRiskScore(
+                hex_id=hex_id,
+                center_lat=lat,
+                center_lon=lon,
+                risk_score=risk_score,
+                risk_tier=risk_tier,
+                signal_count=len(signals),
+                top_sector=sector,
+                top_signal_type=signals[0].signal_type if signals else None,
+                last_signal_at=datetime.utcnow()
+            )
+            db.add(new_hex)
+        
+        await db.commit()
     
     return IngestResponse(
         status="accepted",
         batch_id=batch.batch_id,
         vectors_received=len(vectors_to_insert),
-        task_id=task.id,
-        message="Batch queued for processing"
+        task_id=str(uuid.uuid4()),
+        message="Batch processed inline (no Celery)"
     )

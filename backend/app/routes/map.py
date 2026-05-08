@@ -1,14 +1,30 @@
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
+from sqlalchemy.future import select
 from app.schemas.map_schema import HeatmapFeatureCollection, HeatmapFeature, HeatmapProperties, HeatmapMeta
 from app.core.security import get_current_user
 from app.schemas.auth_schema import UserResponse
 from app.db.session import get_db
+from app.models.hex_risk import HexRiskScore
 import json
 from datetime import datetime
+import h3
 
 router = APIRouter()
+
+def hex_to_geojson_polygon(hex_id):
+    """Convert an H3 hex ID to a GeoJSON polygon geometry."""
+    try:
+        boundary = h3.cell_to_boundary(hex_id)
+        # h3 v4 returns (lat, lon) tuples; GeoJSON needs [lon, lat]
+        coords = [[lon, lat] for lat, lon in boundary]
+        coords.append(coords[0])  # Close the polygon
+        return {
+            "type": "Polygon",
+            "coordinates": [coords]
+        }
+    except Exception:
+        return {"type": "Polygon", "coordinates": []}
 
 @router.get("/heatmap", response_model=HeatmapFeatureCollection)
 async def get_heatmap(
@@ -26,37 +42,26 @@ async def get_heatmap(
 
     min_lon, min_lat, max_lon, max_lat = coords
     
-    # Query using PostGIS ST_MakeEnvelope and ST_Intersects
-    # Exclude stale hexes
-    query = text("""
-        SELECT 
-            hex_id, 
-            ST_AsGeoJSON(geom) as geometry,
-            risk_score, 
-            risk_tier, 
-            signal_count, 
-            top_sector, 
-            top_signal_type, 
-            alert_narrative, 
-            computed_at
-        FROM hex_risk_scores
-        WHERE ST_Intersects(geom, ST_MakeEnvelope(:min_lon, :min_lat, :max_lon, :max_lat, 4326))
-        AND is_stale = FALSE
-    """)
+    # Simple bounding box query using lat/lon columns (replaces PostGIS ST_Intersects)
+    query = select(HexRiskScore).where(
+        HexRiskScore.center_lat >= min_lat,
+        HexRiskScore.center_lat <= max_lat,
+        HexRiskScore.center_lon >= min_lon,
+        HexRiskScore.center_lon <= max_lon,
+        HexRiskScore.is_stale == False
+    )
     
-    result = await db.execute(query, {
-        "min_lon": min_lon, "min_lat": min_lat, 
-        "max_lon": max_lon, "max_lat": max_lat
-    })
+    result = await db.execute(query)
+    rows = result.scalars().all()
     
     features = []
-    for row in result:
+    for row in rows:
         # RBAC: Only department users see narrative and top_sector
         narrative = row.alert_narrative if current_user.role in ['department_user', 'coordinator', 'admin'] else None
         sector = row.top_sector if current_user.role in ['department_user', 'coordinator', 'admin'] else None
         
         feature = HeatmapFeature(
-            geometry=json.loads(row.geometry),
+            geometry=hex_to_geojson_polygon(row.hex_id),
             properties=HeatmapProperties(
                 hex_id=row.hex_id,
                 risk_score=float(row.risk_score),

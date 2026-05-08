@@ -3,7 +3,7 @@ import math
 from datetime import datetime
 
 def bin_to_hex(lat: float, lon: float, resolution: int = 9) -> str:
-    return h3.geo_to_h3(lat, lon, resolution)
+    return h3.latlng_to_cell(lat, lon, resolution)
 
 def compute_risk_score(hex_signals: list[dict]) -> float:
     sector_weights = {

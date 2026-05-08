@@ -1,13 +1,14 @@
-from sqlalchemy import Column, String, Numeric, Integer, Boolean, DateTime, Text
+from sqlalchemy import Column, String, Numeric, Float, Integer, Boolean, DateTime, Text
 from sqlalchemy.sql import func
-from geoalchemy2 import Geometry
 from app.db.session import Base
 
 class HexRiskScore(Base):
     __tablename__ = "hex_risk_scores"
 
     hex_id = Column(String(20), primary_key=True)
-    geom = Column(Geometry('POLYGON', srid=4326), nullable=False, index=True)
+    # Store polygon center lat/lon instead of PostGIS geometry
+    center_lat = Column(Float, nullable=False, default=0.0)
+    center_lon = Column(Float, nullable=False, default=0.0)
     risk_score = Column(Numeric(5, 2), nullable=False, default=0.0, index=True)
     risk_tier = Column(String(20), nullable=False, default='LOW', index=True)
     signal_count = Column(Integer, nullable=False, default=0)

@@ -1,5 +1,4 @@
 from sqlalchemy import Column, String, Numeric, DateTime, Text, ForeignKey, Index
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 from app.db.session import Base
@@ -7,7 +6,7 @@ from app.db.session import Base
 class DepartmentAlert(Base):
     __tablename__ = "department_alerts"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     hex_id = Column(String(20), ForeignKey('hex_risk_scores.hex_id'), nullable=False, index=True)
     triggered_by = Column(String(50), nullable=False)
     old_tier = Column(String(20), nullable=False)
@@ -19,5 +18,5 @@ class DepartmentAlert(Base):
     resolved_at = Column(DateTime(timezone=True))
 
     __table_args__ = (
-        Index('idx_alerts_tier', 'new_tier', 'created_at', postgresql_ops={'created_at': 'DESC'}),
+        Index('idx_alerts_tier', 'new_tier', 'created_at'),
     )

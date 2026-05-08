@@ -1,5 +1,4 @@
 from sqlalchemy import Column, BigInteger, String, Numeric, SmallInteger, DateTime, Index
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from app.db.session import Base
 
@@ -15,9 +14,9 @@ class SignalVector(Base):
     lon = Column(Numeric(10, 6), nullable=False)
     hour_of_day = Column(SmallInteger, nullable=False)
     day_of_week = Column(SmallInteger, nullable=False)
-    batch_id = Column(UUID(as_uuid=True), nullable=False)
-    received_at = Column(DateTime(timezone=True), primary_key=True, server_default=func.now())
+    batch_id = Column(String(36), nullable=False)
+    received_at = Column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
-        Index('idx_signal_hex_time', 'hex_id', 'received_at', postgresql_ops={'received_at': 'DESC'}),
+        Index('idx_signal_hex_time', 'hex_id', 'received_at'),
     )
