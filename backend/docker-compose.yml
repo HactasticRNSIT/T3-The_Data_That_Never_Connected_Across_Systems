@@ -1,0 +1,30 @@
+version: "3.8"
+services:
+  db:
+    image: timescale/timescaledb-ha:pg15
+    environment:
+      - POSTGRES_USER=safegrid
+      - POSTGRES_PASSWORD=safegrid
+      - POSTGRES_DB=safegrid_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U safegrid -d safegrid_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # NOTE: In a real environment you'd want a custom image with TimescaleDB + PostGIS.
+    # timescale/timescaledb-ha includes PostGIS by default!
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  db_data:
+  redis_data:

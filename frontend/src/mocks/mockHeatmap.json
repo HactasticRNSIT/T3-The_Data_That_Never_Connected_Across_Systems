@@ -1,0 +1,61 @@
+{
+  "type": "FeatureCollection",
+  "meta": {
+    "hex_count": 5,
+    "generated_at": "2025-05-08T22:35:00Z",
+    "bbox": [77.55, 12.85, 77.75, 13.05]
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.575001, 12.977815], [77.576547, 12.977284], [77.578021, 12.978166], [77.577950, 12.979581], [77.576404, 12.980111], [77.574930, 12.979229], [77.575001, 12.977815]]]
+      },
+      "properties": {
+        "hex_id": "8961892a3c3ffff",
+        "risk_score": 8.1,
+        "risk_tier": "CRITICAL",
+        "signal_count": 8,
+        "top_signal": "violent_incident",
+        "top_sector": "police",
+        "alert_narrative": "Concentration of violence-related reports and trauma admissions in this corridor suggests escalating risk after 10 PM. Recommend increased patrol frequency and lighting audit.",
+        "computed_at": "2025-05-08T22:30:00Z"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.595001, 12.957815], [77.596547, 12.957284], [77.598021, 12.958166], [77.597950, 12.959581], [77.596404, 12.960111], [77.594930, 12.959229], [77.595001, 12.957815]]]
+      },
+      "properties": {
+        "hex_id": "8961892a0c3ffff",
+        "risk_score": 6.4,
+        "risk_tier": "HIGH",
+        "signal_count": 4,
+        "top_signal": "road_accident",
+        "top_sector": "transport",
+        "alert_narrative": "Recurring accidents combined with street light outages suggest immediate need for infrastructure review.",
+        "computed_at": "2025-05-08T22:30:00Z"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.635001, 12.917815], [77.636547, 12.917284], [77.638021, 12.918166], [77.637950, 12.919581], [77.636404, 12.920111], [77.634930, 12.919229], [77.635001, 12.917815]]]
+      },
+      "properties": {
+        "hex_id": "8961892e2c3ffff",
+        "risk_score": 3.5,
+        "risk_tier": "MODERATE",
+        "signal_count": 2,
+        "top_signal": "noise_complaint",
+        "top_sector": "community",
+        "alert_narrative": null,
+        "computed_at": "2025-05-08T22:30:00Z"
+      }
+    }
+  ]
+}
